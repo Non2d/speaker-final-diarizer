@@ -1,17 +1,81 @@
 import React from 'react';
+import { ZoomContext } from '../app/page';
+import { useState, useEffect, useContext } from 'react';
+import Papa from 'papaparse';
+
+interface DiarizationRawSpeaker {
+    start: number;
+    end: number;
+    speaker: string;
+}
+
+interface Diarization {
+    start: number;
+    end: number;
+    speaker: number;
+}
 
 const TimelineSpeakers = () => {
-    // 縦棒の位置を指定
-    const barPositions = {
-        red: [[0, 30], [40, 57], [70, 81], [90, 105], [120, 150]],
-        blue: [[0, 36], [50, 58], [70, 83], [90, 110]],
-        green: [[0, 33], [45, 60], [75, 85], [95, 110], [120, 150]],
-        orange: [[0, 39], [50, 66], [80, 91], [100, 115], [130, 140], [150, 150]],
-        purple: [[0, 42], [43, 71], [72, 96], [97, 120]],
-        pink: [[0, 45], [46, 74], [75, 99], [100, 123], [124, 150]],
-        cyan: [[0, 48], [49, 77], [78, 102], [103, 126], [127, 150]],
-        magenta: [[0, 51], [52, 81], [82, 106], [107, 130]],
-        lime: [[0, 54], [55, 85], [86, 110], [111, 135], [136, 150], [151, 150]]
+    const [zoomLevel] = useContext(ZoomContext); //分割代入で値のみ取得。set関数はここでは使わない。
+
+    const [diarizations, setDiarizations] = useState<Diarization[]>([]);
+    const [barPositions, setBarPositions] = useState<{ [key: string]: [number, number][] }>({});
+
+    useEffect(() => {
+        const fetchData = async () => {
+            const response = await fetch('/test-data/output_diarization/soturon/The Kansai 2018 R4.csv');
+            if (!response.ok) {
+                throw new Error('Failed to fetch data');
+            }
+            if (!response.body) {
+                throw new Error('Response body is null');
+            }
+            const reader = response.body.getReader();
+            const result = await reader.read(); // raw array
+            const decoder = new TextDecoder('utf-8');
+            const csv = decoder.decode(result.value); // CSV text
+            const parsedData = Papa.parse<DiarizationRawSpeaker>(csv, {
+                header: true,
+                skipEmptyLines: true,
+                dynamicTyping: true
+            }); // Parse CSV
+
+            // データの整形
+            const formattedData = parsedData.data.map((item) => {
+                const speakerString = item.speaker || ''; // Ensure speaker is a string
+                const speakerNumber = parseInt(speakerString.match(/\d+/)?.[0] || '0', 10); // Extract number from speaker string
+                return {
+                    start: item.start,
+                    end: item.end,
+                    speaker: speakerNumber
+                };
+            });
+
+            setDiarizations(formattedData); // Store data in state
+
+            console.log(formattedData); // Log data to console
+        };
+
+        fetchData();
+    }, []);
+
+    useEffect(() => {
+        const newBarPositions: { [key: string]: [number, number][] } = {};
+
+        diarizations.forEach((item) => {
+            const color = getColorForSpeaker(item.speaker); // Define this function to map speaker number to color
+            if (!newBarPositions[color]) {
+                newBarPositions[color] = [];
+            }
+            newBarPositions[color].push([item.start, item.end]);
+        });
+
+        setBarPositions(newBarPositions);
+    }, [diarizations]);
+
+    const getColorForSpeaker = (speaker: number): string => {
+        const colors = ['red', 'blue', 'green', 'orange', 'purple', 'pink', 'cyan', 'magenta', 'lime'];
+        return colors[speaker % colors.length];
     };
 
     return (
@@ -23,18 +87,18 @@ const TimelineSpeakers = () => {
                             style={{
                                 position: 'absolute',
                                 left: `${colorIndex * 30}px`, // 横座標を広げる
-                                top: `${start * 10}px`, // 始点をずらす
+                                top: `${start * zoomLevel*0.55}px`, // 始点をずらす
                                 width: '7px',
-                                height: `${(end - start) * 10}px`, // 高さを終了位置と開始位置の差で計算
+                                height: `${(end - start) * zoomLevel*0.55}px`, // 高さを終了位置と開始位置の差で計算
                                 backgroundColor: color
                             }}
                         />
-                        {index === 0 && (
+                        {/* {index === 0 && (
                             <div
                                 style={{
                                     position: 'absolute',
                                     left: `${colorIndex * 30 - 5}px`, // 横座標を調整
-                                    top: `${start * 10 - 30}px`, // 数字を棒の上に表示
+                                    top: `${start - 30}px`, // 数字を棒の上に表示
                                     width: '17px', // テキストの幅を広げる
                                     textAlign: 'center', // テキストをセンター揃え
                                     color: 'gray',
@@ -43,7 +107,7 @@ const TimelineSpeakers = () => {
                             >
                                 {colorIndex + 1}
                             </div>
-                        )}
+                        )} */}
                     </div>
                 ))
             )}
