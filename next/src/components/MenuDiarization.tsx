@@ -7,58 +7,49 @@ interface ContextMenuProps {
     left: number;
     right: number;
     bottom: number;
-    label: number;
+    nodeData: any;
+    type: string;
+    nodes: any[];
+    setNodes: React.Dispatch<React.SetStateAction<any[]>>;
+    options: { diarizationId: number; label: string; color: string }[];
+    setOptions: React.Dispatch<React.SetStateAction<{ diarizationId: number; label: string; color: string }[]>>;
     [key: string]: any; // その他のプロパティを許可
 }
 
-function MenuDiarization({ id, top, left, right, bottom, label, ...props }: ContextMenuProps) {
-    const color = diarizationColors[label % 20];
-    const [selectedOption, setSelectedOption] = useState(1);
-
-    const registerColorAsSpeaker = async () => {
-        
-    };
+function MenuDiarization({ id, top, left, right, bottom, nodeData, type, nodes, setNodes, options, setOptions, ...props }: ContextMenuProps) {
+    const color = diarizationColors[nodeData.speakerId % 20];
+    const [selectedOption, setSelectedOption] = useState(0);
 
     const handleOptionChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
-        setSelectedOption(Number(event.target.value));
-    };
+        const selectedValue = Number(event.target.value);
+        setSelectedOption(selectedValue);
 
-    const handleClick = (event: React.MouseEvent) => {
-        event.stopPropagation();
-    }
+        // optionsを更新
+        setOptions(prevOptions =>
+            prevOptions.map(option =>
+                option.diarizationId === selectedValue ? { ...option, diarizationId: nodeData.speaker, color: diarizationColors[nodeData.speakerId % 20] } : option
+            )
+        );
+    };
 
     return (
         <div
             style={{ top, left }}
             className="absolute bg-white border border-gray-300 shadow-lg z-50 p-2 rounded-md"
-            onClick={handleClick}
             {...props}
         >
-            <p className="m-2">
-                Block <span style={{ display: 'inline-block', width: '20px', height: '20px', backgroundColor: color }}></span> is
-            </p>
-
+            <span style={{ display: 'inline-block', width: '50px', height: '20px', backgroundColor: color }}></span> is
             <select
                 value={selectedOption}
                 onChange={handleOptionChange}
                 className="block w-full p-2 my-1 bg-gray-100 rounded-md"
             >
-                <option value={0}>PM</option>
-                <option value={1}>LO</option>
-                <option value={2}>DPM/MG</option>
-                <option value={3}>DLO/MO</option>
-                <option value={4}>GW</option>
-                <option value={5}>OW</option>
-                <option value={6}>LOR</option>
-                <option value={7}>PMR</option>
+                {options.map(option => (
+                    <option key={option.diarizationId} value={option.diarizationId} style={{ backgroundColor: option.color }}>
+                        {option.label}
+                    </option>
+                ))}
             </select>
-
-            <button
-                onClick={registerColorAsSpeaker}
-                className="block w-full p-2 my-1 bg-gray-100 rounded-md hover:bg-gray-200"
-            >
-                Confirm
-            </button>
         </div>
     );
 }

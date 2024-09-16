@@ -9,7 +9,19 @@ import NodeTimeLabel from './NodeTimeLabel';
 import NodeDiarization from './NodeDiarization';
 
 import MenuDiarization from './MenuDiarization';
+import MenuAsr from './MenuAsr';
+
 import diarizationColors from '../utils/DiarizationColors';
+
+interface Node {
+    id: string;
+    data: any;
+    position: {
+        x: number;
+        y: number;
+    };
+    type: string; // typeは存在しない可能性があるのでオプションにする
+}
 
 interface Asr {
     start: number;
@@ -29,8 +41,15 @@ interface MenuDiarizationProps {
     left: number;
     right: number;
     bottom: number;
-    label: number;
+    nodeData: any;
+    type: string;
     [key: string]: any; // その他のプロパティを許可
+}
+
+interface SpeakerData {
+    positionId: number;
+    speaker: number;
+    color: string;
 }
 
 //文字起こしデータの取得・設定
@@ -77,11 +96,11 @@ const Timeline = () => {
         fetchData();
     }, []);
 
-    const asrNodes = asrs.map((asr, index) => {
+    const initialAsrNodes = asrs.map((asr, index) => {
         return {
             id: `asr-${index}`,
             type: 'NodeAsr',
-            data: { label: asr.text, width: nodeWidth, height: zoomLevel * (asr.end - asr.start), borderWidth: 2, borderColor: diarizationColors[6], start: asr.start },
+            data: { text: asr.text, start: asr.start, end: asr.end, speaker: -1 },
             position: { x: 70, y: zoomLevel * asr.start },
         };
     });
@@ -130,13 +149,13 @@ const Timeline = () => {
         return {
             id: `dia-${index}`,
             type: 'NodeDiarization',
-            data: { label: diarization.speaker, width: diarizationWidth, height: zoomLevel * (diarization.end - diarization.start) },
+            data: { speakerId: diarization.speaker, width: diarizationWidth, height: zoomLevel * (diarization.end - diarization.start) },
             position: { x: 80 + nodeWidth + 5 * diarization.speaker, y: zoomLevel * diarization.start },
         };
     });
 
     // Time Label
-    const timeLabels = [];
+    const timeLabels: Node[] = [];
     const interval = 5;
     const duration = 180 * zoomLevel
 
@@ -144,13 +163,17 @@ const Timeline = () => {
         timeLabels.push({
             id: `tl-${i + 1}`,
             type: 'NodeTimeLabel',
-            position: { x: 0, y: -13 + i * 60 },
             data: { seconds: i * 60 / zoomLevel },
+            position: { x: 0, y: -13 + i * 60 },
         });
     }
 
-    //Integrate all nodes
-    const nodes = [...timeLabels, ...diarizationNodes, ...asrNodes];
+    //Initialize all nodes
+    const [nodes, setNodes] = useState<Node[]>([]);
+
+    useEffect(() => {
+        setNodes([...timeLabels, ...diarizationNodes, ...initialAsrNodes]);
+    }, [asrs, diarizations]);
 
     //Menus
     const [menu, setMenu] = useState<MenuDiarizationProps | null>(null);
@@ -161,34 +184,52 @@ const Timeline = () => {
             // Prevent native context menu from showing
             event.preventDefault();
 
+            if (ref.current === null) {
+                console.error('Ref is null');
+                return;
+            }
+            const pane = ref.current.getBoundingClientRect();
+
             if (node.type === 'NodeAsr') {
                 // Node 1用のメニューを表示
-            } else if (node.type === 'NodeDiarization') {
-                // Node 2用のメニューを表示
-
-                if (ref.current === null) {
-                    console.error('Ref is null');
-                    return;
-                }
-                const pane = ref.current.getBoundingClientRect();
                 setMenu({
                     id: node.id,
                     top: event.clientY,
                     left: event.clientX,
                     right: pane.width - event.clientX,
                     bottom: pane.height - event.clientY,
-                    label: node.data.label
+                    nodeData: node.data,
+                    type: 'MenuAsr'
+                });
+            } else if (node.type === 'NodeDiarization') {
+                // Node 2用のメニューを表示
+                setMenu({
+                    id: node.id,
+                    top: event.clientY,
+                    left: event.clientX,
+                    right: pane.width - event.clientX,
+                    bottom: pane.height - event.clientY,
+                    nodeData: node.data,
+                    type: 'MenuDiarization'
                 });
             }
-            
+
         },
         [setMenu],
     );
 
-    const onClick = useCallback(() => setMenu(null), [setMenu]);
-
-    // settings
-    const panOnDrag = [1, 2];
+    // Diarization Datas
+    const [options, setOptions] = useState([
+        { diarizationId: 0, label: 'PM', color: '' },
+        { diarizationId: 1, label: 'LO', color: '' },
+        { diarizationId: 2, label: 'DPM', color: '' },
+        { diarizationId: 3, label: 'DLO', color: '' },
+        { diarizationId: 4, label: 'GW', color: '' },
+        { diarizationId: 5, label: 'OW', color: '' },
+        { diarizationId: 6, label: 'LOR', color: '' },
+        { diarizationId: 7, label: 'PMR', color: '' },
+        { diarizationId: 8, label: 'None', color: '' },
+    ]);
 
     return (
         <div style={{ width: '100vw', height: '100vh' }}>
@@ -196,10 +237,8 @@ const Timeline = () => {
                 ref={ref}
                 nodes={nodes}
                 nodeTypes={{ NodeAsr: NodeAsr, NodeTimeLabel: NodeTimeLabel, NodeDiarization: NodeDiarization }}
+                onClick={() => setMenu(null)}
                 panOnScroll
-                selectionOnDrag
-                panOnDrag={panOnDrag}
-                onClick={onClick}
                 onNodeContextMenu={onNodeContextMenu}
             >
                 <Background
@@ -207,8 +246,10 @@ const Timeline = () => {
                     gap={[100000, 60]}
                     lineWidth={2}
                 />
-                {menu && <MenuDiarization {...menu} />}
             </ReactFlow>
+            {/* ReactFlow外にMenuを移動 */}
+            {menu && menu.type === 'MenuAsr' && <MenuAsr nodes={nodes} setNodes={setNodes} {...menu} />}
+            {menu && menu.type === 'MenuDiarization' && <MenuDiarization nodes={nodes} setNodes={setNodes} options={options} setOptions={setOptions} {...menu} />}
         </div>
     );
 };
