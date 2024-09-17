@@ -1,5 +1,6 @@
-import React, { useState, useEffect, useRef } from 'react';
-import diarizationColors from '../utils/DiarizationColors';
+import React, { useState } from 'react';
+import { toast } from 'react-hot-toast';
+import speechIdToPositionName from '../utils/speechIdToPositionName';
 
 interface ContextMenuProps {
     id: string;
@@ -9,47 +10,54 @@ interface ContextMenuProps {
     bottom: number;
     nodeData: any;
     type: string;
-    nodes: any[];
-    setNodes: React.Dispatch<React.SetStateAction<any[]>>;
+    asrDiars: any;
+    setAsrDiars: React.Dispatch<React.SetStateAction<any>>;
+    previousIsTop: boolean;
+    setPreviousIsTop: React.Dispatch<React.SetStateAction<boolean>>;
     [key: string]: any;
 }
 
-function MenuAsr({ id, top, left, right, bottom, nodeData, type, nodes, setNodes, ...props }: ContextMenuProps) {
-    const speakerSelectRef = useRef<HTMLSelectElement>(null);
-    const positionSelectRef = useRef<HTMLSelectElement>(null);
-
-    const [selectedPosition, setSelectedPosition] = useState(0);
-    const [selectedSpeaker, setSelectedSpeaker] = useState(0);
+function MenuAsr({ id, top, left, right, bottom, nodeData, type, asrDiars, setAsrDiars, previousIsTop, setPreviousIsTop, ...props }: ContextMenuProps) {
+    const [isTop, setIsTop] = useState(!previousIsTop);
+    const [selectedPosition, setSelectedPosition] = useState(-1);
 
     const handlePositionChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
         const newSelectedPosition = Number(event.target.value);
         setSelectedPosition(newSelectedPosition);
-    };
 
-    const handleSpeakerChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
-        const newSelectedSpeaker = Number(event.target.value);
-        setSelectedSpeaker(newSelectedSpeaker);
-        const newNodes = nodes.map((node) => {
-            if (node.id === id) {
-                return {
-                    ...node,
-                    data: {
-                        ...node.data,
-                        speakerId: newSelectedSpeaker,
-                    },
-                };
+        // validation
+        // if(nodeIdToNumber(asrDiars[newSelectedPosition-1]?.start) >= nodeIdToNumber(id) || nodeIdToNumber(asrDiars[-1]?.end) >= nodeIdToNumber(id)){
+        //     console.error("Node cannot belong to more than two speeches.");
+        //     toast.error("Node can't belong to 2 speeches.")
+        //     return;
+        // }
+        // やるんなら徹底的にやらないとデッドロックになる
+        setAsrDiars(asrDiars.map((asrDiars: any) => {
+            if (asrDiars.positionId === newSelectedPosition) {
+                if (isTop) {
+                    return {
+                        ...asrDiars,
+                        start: id,
+                    };
+                } else {
+                    return {
+                        ...asrDiars,
+                        end: id,
+                    };
+                }
             }
-            return node;
-        });
-        setNodes(newNodes);
-        console.log("selected position: ", selectedPosition, "selected speaker: ", newSelectedSpeaker);
-    };
+            return asrDiars;
+        }));
 
-    useEffect(() => {
-        if (speakerSelectRef.current) {
-            speakerSelectRef.current.style.backgroundColor = diarizationColors[selectedSpeaker];
-        }
-    }, [selectedSpeaker, diarizationColors]);
+        toast.success(
+            <span>
+                <strong>{id}</strong> is set as <strong>{speechIdToPositionName[newSelectedPosition]}</strong>'s <strong>{isTop ? "top" : "last"}</strong> seg.
+            </span>,
+            { duration: 5000 }
+        );
+
+        setPreviousIsTop(isTop);
+    };
 
     return (
         <div
@@ -60,9 +68,31 @@ function MenuAsr({ id, top, left, right, bottom, nodeData, type, nodes, setNodes
             }}
             {...props}
         >
-            This block is
+            <div
+                onClick={() => setIsTop(!isTop)}
+                style={{
+                    backgroundColor: 'white',
+                    cursor: 'pointer',
+                    textDecoration: 'none',
+                    color: '#1a73e8',
+                    padding: '0px 10px',
+                    borderRadius: '5px',
+                    transition: 'background-color 0.3s, color 0.3s',
+                }}
+                onMouseEnter={(e) => {
+                    (e.currentTarget as HTMLDivElement).style.backgroundColor = '#f1f3f4';
+                    (e.currentTarget as HTMLDivElement).style.color = '#0b66c3';
+                }}
+                onMouseLeave={(e) => {
+                    (e.currentTarget as HTMLDivElement).style.backgroundColor = 'white';
+                    (e.currentTarget as HTMLDivElement).style.color = '#1a73e8';
+                }}
+            >
+                <span style={{ color: 'black' }}>It's </span>
+                <span style={{ color: '#1a73e8', fontWeight: 'bold' }}>{isTop ? 'top' : 'last'}</span>
+                <span style={{ color: 'black' }}> seg of</span>
+            </div>
             <select
-                ref={positionSelectRef}
                 value={selectedPosition}
                 onChange={handlePositionChange}
                 className="block w-full p-2 my-1 bg-gray-100 rounded-md"
@@ -78,39 +108,6 @@ function MenuAsr({ id, top, left, right, bottom, nodeData, type, nodes, setNodes
                 <option value={-1}>None</option>
             </select>
 
-            presented by
-
-            {selectedPosition === -1 ? (
-                <span className="block w-full p-2 my-1 bg-gray-300 rounded-md">None</span>
-            ) : (
-                <select
-                    ref={speakerSelectRef}
-                    value={selectedSpeaker}
-                    onChange={handleSpeakerChange}
-                    className="block w-full p-2 my-1 bg-gray-100 rounded-md"
-                >
-                    <option value={1} style={{ backgroundColor: diarizationColors[1] }}>SPEAKER_01</option>
-                    <option value={2} style={{ backgroundColor: diarizationColors[2] }}>SPEAKER_02</option>
-                    <option value={3} style={{ backgroundColor: diarizationColors[3] }}>SPEAKER_03</option>
-                    <option value={4} style={{ backgroundColor: diarizationColors[4] }}>SPEAKER_04</option>
-                    <option value={5} style={{ backgroundColor: diarizationColors[5] }}>SPEAKER_05</option>
-                    <option value={6} style={{ backgroundColor: diarizationColors[6] }}>SPEAKER_06</option>
-                    <option value={7} style={{ backgroundColor: diarizationColors[7] }}>SPEAKER_07</option>
-                    <option value={8} style={{ backgroundColor: diarizationColors[8] }}>SPEAKER_08</option>
-                    <option value={9} style={{ backgroundColor: diarizationColors[9] }}>SPEAKER_09</option>
-                    <option value={10} style={{ backgroundColor: diarizationColors[10] }}>SPEAKER_10</option>
-                    <option value={11} style={{ backgroundColor: diarizationColors[11] }}>SPEAKER_11</option>
-                    <option value={12} style={{ backgroundColor: diarizationColors[12] }}>SPEAKER_12</option>
-                    <option value={13} style={{ backgroundColor: diarizationColors[13] }}>SPEAKER_13</option>
-                    <option value={14} style={{ backgroundColor: diarizationColors[14] }}>SPEAKER_14</option>
-                    <option value={15} style={{ backgroundColor: diarizationColors[15] }}>SPEAKER_15</option>
-                    <option value={16} style={{ backgroundColor: diarizationColors[16] }}>SPEAKER_16</option>
-                    <option value={17} style={{ backgroundColor: diarizationColors[17] }}>SPEAKER_17</option>
-                    <option value={18} style={{ backgroundColor: diarizationColors[18] }}>SPEAKER_18</option>
-                    <option value={19} style={{ backgroundColor: diarizationColors[19] }}>SPEAKER_19</option>
-                    <option value={20} style={{ backgroundColor: diarizationColors[20] }}>SPEAKER_20</option>
-                </select>
-            )}
         </div>
     );
 }

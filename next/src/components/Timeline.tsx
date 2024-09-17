@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback, useRef } from 'react';
+import React, { useEffect, useState, useCallback, useRef, use } from 'react';
 import { ReactFlow, Background, BackgroundVariant, SelectionMode } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 
@@ -8,10 +8,9 @@ import NodeAsr from './NodeAsr';
 import NodeTimeLabel from './NodeTimeLabel';
 import NodeDiarization from './NodeDiarization';
 
-import MenuDiarization from './MenuDiarization';
 import MenuAsr from './MenuAsr';
 
-import diarizationColors from '../utils/DiarizationColors';
+import nodeIdToNumber from '../utils/nodeIdToNumber';
 
 interface Node {
     id: string;
@@ -60,6 +59,9 @@ const Timeline = () => {
     const [asrs, setAsrs] = React.useState<Asr[]>([]);
     const [diarizations, setDiarizations] = React.useState<Diarization[]>([]);
 
+    //style
+    const [isNA, setIsNA] = useState(false);
+
     // Asr
     useEffect(() => {
         const fetchData = async () => {
@@ -99,7 +101,7 @@ const Timeline = () => {
         return {
             id: `asr-${index}`,
             type: 'NodeAsr',
-            data: { text: asr.text, start: asr.start, end: asr.end, diarizationId: -1 },
+            data: { text: asr.text, start: asr.start, end: asr.end, positionId: -1 },
             position: { x: 70, y: zoomLevel * asr.start },
         };
     });
@@ -218,16 +220,54 @@ const Timeline = () => {
     );
 
     // Diarization Datas
-    const [speakerDatas, setSpeakerDatas] = useState<SpeakerData[]>([
-        { positionId: 0, diarizationId: 7 },
-        { positionId: 1, diarizationId: 6 },
-        { positionId: 2, diarizationId: 5 },
-        { positionId: 3, diarizationId: 4 },
-        { positionId: 4, diarizationId: 3 },
-        { positionId: 5, diarizationId: 2 },
-        { positionId: 6, diarizationId: 1 },
-        { positionId: 7, diarizationId: 0 },
+    const [asrDiars, setAsrDiars] = useState<any[]>([
+        { positionId: 0, start: undefined, end: undefined }, //PM
+        { positionId: 1, start: undefined, end: undefined }, //LO
+        { positionId: 2, start: undefined, end: undefined }, //DPM
+        { positionId: 3, start: undefined, end: undefined }, //DLO
+        { positionId: 4, start: undefined, end: undefined }, //GW
+        { positionId: 5, start: undefined, end: undefined }, //OW
+        { positionId: 6, start: undefined, end: undefined }, //LOR
+        { positionId: 7, start: undefined, end: undefined }, //PMR
     ]);
+
+    useEffect(() => {
+        console.log(asrDiars);
+
+        const newNodes = nodes.map((node) => {
+            const id = nodeIdToNumber(node.id);
+            if (node.type === 'NodeAsr') {
+                // node.id が条件を満たすすべての asrDiar を抽出
+                const matchingAsrDiars = asrDiars.filter((asrDiar) =>
+                    (nodeIdToNumber(asrDiar.start) <= id && id <= nodeIdToNumber(asrDiar.end)) ||
+                    id === nodeIdToNumber(asrDiar.start) ||
+                    id === nodeIdToNumber(asrDiar.end)
+                );
+
+                // 一致する positionId のリストを作成
+                const positionIds = matchingAsrDiars.map((asrDiar) => asrDiar.positionId);
+
+                // positionId を更新するロジック (例として最初の positionId を使用)
+                const positionId = positionIds.length > 0 ? positionIds[0] : -1;
+
+                return {
+                    ...node,
+                    data: {
+                        ...node.data,
+                        positionId,
+                    },
+                };
+            }
+            return node;
+        });
+
+        setNodes(newNodes);
+
+    }, [asrDiars]);
+
+    //util
+    const [previousIsTop, setPreviousIsTop] = useState(true);
+
 
     return (
         <div style={{ width: '100vw', height: '100vh' }}>
@@ -246,8 +286,37 @@ const Timeline = () => {
                 />
             </ReactFlow>
             {/* ReactFlow外にMenuを移動 */}
-            {menu && menu.type === 'MenuAsr' && <MenuAsr nodes={nodes} setNodes={setNodes} speakerDatas={speakerDatas} setSpeakerDatas={setSpeakerDatas} {...menu} />}
+            {menu && menu.type === 'MenuAsr' && <MenuAsr asrDiars={asrDiars} setAsrDiars={setAsrDiars} previousIsTop={previousIsTop} setPreviousIsTop={setPreviousIsTop} {...menu} />}
+            <div
+                onClick={() => setIsNA(!isNA)}
+                style={{
+                    position: 'absolute',
+                    top: 10,
+                    right: 10,
+                    backgroundColor: 'white',
+                    cursor: 'pointer',
+                    textDecoration: 'none',
+                    color: '#1a73e8',
+                    padding: '0px 10px',
+                    borderRadius: '5px',
+                    transition: 'background-color 0.3s, color 0.3s',
+                    zIndex: 1000,
+                    fontSize: '20px',
+                }}
+                onMouseEnter={(e) => {
+                    (e.currentTarget as HTMLDivElement).style.backgroundColor = '#f1f3f4';
+                    (e.currentTarget as HTMLDivElement).style.color = '#0b66c3';
+                }}
+                onMouseLeave={(e) => {
+                    (e.currentTarget as HTMLDivElement).style.backgroundColor = 'white';
+                    (e.currentTarget as HTMLDivElement).style.color = '#1a73e8';
+                }}
+            >
+                <span style={{ color: '#1a73e8', fontWeight: 'bold' }}>{isNA ? 'North American' : 'Asian'}</span>
+                <span style={{ color: 'black' }}> style</span>
+            </div>
         </div>
+
     );
 };
 
