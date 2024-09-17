@@ -6,14 +6,12 @@ interface NodeAsrProps {
     text: string;
     start: number;
     end: number;
-    speaker: number;
-    borderWidth: number; // 枠の太さを指定
-    borderColor: string; // 枠の色を指定
+    speakerId: number;
   };
 }
 
 const NodeAsr = ({ data }: NodeAsrProps) => {
-  const { text, start, end, speaker} = data;
+  const { text, start, end, speakerId} = data;
   
   const threshold = 20; // heightが20未満の場合に色を変える閾値
   const zoomLevel = 10; // 1秒あたりの高さ
@@ -32,9 +30,9 @@ const NodeAsr = ({ data }: NodeAsrProps) => {
       style={{
         width: `${width}px`,
         height: `${height}px`,
-        borderWidth: `${borderWidth}px ${10}px ${borderWidth}px ${borderWidth}px`, // 右辺のボーダー幅を個別に設定
+        borderWidth: `${borderWidth}px ${15}px ${borderWidth}px ${borderWidth}px`, // 右辺のボーダー幅を個別に設定
         backgroundColor: backgroundColor,
-        borderColor: `black ${diarizationColors[speaker]} black black`,
+        borderColor: `black ${diarizationColors[speakerId]} black black`,
         // overflow: 'auto' // スクロールを有効にする
       }}
     >

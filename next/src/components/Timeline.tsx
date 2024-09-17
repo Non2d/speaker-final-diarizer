@@ -48,8 +48,7 @@ interface MenuDiarizationProps {
 
 interface SpeakerData {
     positionId: number;
-    speaker: number;
-    color: string;
+    diarizationId: number;
 }
 
 //文字起こしデータの取得・設定
@@ -100,7 +99,7 @@ const Timeline = () => {
         return {
             id: `asr-${index}`,
             type: 'NodeAsr',
-            data: { text: asr.text, start: asr.start, end: asr.end, speaker: -1 },
+            data: { text: asr.text, start: asr.start, end: asr.end, diarizationId: -1 },
             position: { x: 70, y: zoomLevel * asr.start },
         };
     });
@@ -219,16 +218,15 @@ const Timeline = () => {
     );
 
     // Diarization Datas
-    const [options, setOptions] = useState([
-        { diarizationId: 0, label: 'PM', color: '' },
-        { diarizationId: 1, label: 'LO', color: '' },
-        { diarizationId: 2, label: 'DPM', color: '' },
-        { diarizationId: 3, label: 'DLO', color: '' },
-        { diarizationId: 4, label: 'GW', color: '' },
-        { diarizationId: 5, label: 'OW', color: '' },
-        { diarizationId: 6, label: 'LOR', color: '' },
-        { diarizationId: 7, label: 'PMR', color: '' },
-        { diarizationId: 8, label: 'None', color: '' },
+    const [speakerDatas, setSpeakerDatas] = useState<SpeakerData[]>([
+        { positionId: 0, diarizationId: 7 },
+        { positionId: 1, diarizationId: 6 },
+        { positionId: 2, diarizationId: 5 },
+        { positionId: 3, diarizationId: 4 },
+        { positionId: 4, diarizationId: 3 },
+        { positionId: 5, diarizationId: 2 },
+        { positionId: 6, diarizationId: 1 },
+        { positionId: 7, diarizationId: 0 },
     ]);
 
     return (
@@ -248,8 +246,7 @@ const Timeline = () => {
                 />
             </ReactFlow>
             {/* ReactFlow外にMenuを移動 */}
-            {menu && menu.type === 'MenuAsr' && <MenuAsr nodes={nodes} setNodes={setNodes} {...menu} />}
-            {menu && menu.type === 'MenuDiarization' && <MenuDiarization nodes={nodes} setNodes={setNodes} options={options} setOptions={setOptions} {...menu} />}
+            {menu && menu.type === 'MenuAsr' && <MenuAsr nodes={nodes} setNodes={setNodes} speakerDatas={speakerDatas} setSpeakerDatas={setSpeakerDatas} {...menu} />}
         </div>
     );
 };

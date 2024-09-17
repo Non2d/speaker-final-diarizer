@@ -4,7 +4,7 @@ const diarizationColors = [
     '#3357FF', // Blue
     '#FF33A1', // Pink
     '#33FFF5', // Cyan
-    '#FF8C33', // Orange
+    '#FFA500', // Light Orange
     '#8C33FF', // Purple
     '#33FF8C', // Light Green
     '#FF3333', // Dark Red
@@ -22,7 +22,8 @@ const diarizationColors = [
     '#FF1493', // Deep Pink
     '#1E90FF', // Dodger Blue
     '#32CD32', // Lime Green
-    '#FF6347'  // Tomato
+    '#FF6347',  // Tomato
+    '#40E0D0', // Turquoise
 ];
 
 export default diarizationColors;

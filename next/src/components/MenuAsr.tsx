@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import diarizationColors from '../utils/DiarizationColors';
 
 interface ContextMenuProps {
@@ -15,74 +15,59 @@ interface ContextMenuProps {
 }
 
 function MenuAsr({ id, top, left, right, bottom, nodeData, type, nodes, setNodes, ...props }: ContextMenuProps) {
-    const color = diarizationColors[nodeData.label % 20];
-    const [selectedOption, setSelectedOption] = useState(0);
+    const speakerSelectRef = useRef<HTMLSelectElement>(null);
+    const positionSelectRef = useRef<HTMLSelectElement>(null);
 
-    const registerBlockAsSpeaker = async () => {
+    const [selectedPosition, setSelectedPosition] = useState(0);
+    const [selectedSpeaker, setSelectedSpeaker] = useState(0);
+
+    const handlePositionChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
+        const newSelectedPosition = Number(event.target.value);
+        setSelectedPosition(newSelectedPosition);
+    };
+
+    const handleSpeakerChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
+        const newSelectedSpeaker = Number(event.target.value);
+        setSelectedSpeaker(newSelectedSpeaker);
         const newNodes = nodes.map((node) => {
             if (node.id === id) {
                 return {
                     ...node,
                     data: {
                         ...node.data,
-                        speaker: selectedOption,
+                        speakerId: newSelectedSpeaker,
                     },
                 };
             }
             return node;
         });
         setNodes(newNodes);
+        console.log("selected position: ", selectedPosition, "selected speaker: ", newSelectedSpeaker);
     };
 
-    const handleOptionChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
-        const newSelectedOption = Number(event.target.value);
-        setSelectedOption(newSelectedOption);
-        const newNodes = nodes.map((node) => {
-            if (node.id === id) {
-                return {
-                    ...node,
-                    data: {
-                        ...node.data,
-                        speaker: newSelectedOption,
-                    },
-                };
-            }
-            return node;
-        });
-        setNodes(newNodes);
-    };
-
-    const popupRef = useRef<Window | null>(null);
-
-    const jumpVideo = () => {
-        const youtubeUrl = `https://www.youtube.com/watch?v=tuxREnaOR5M&t=${Math.floor(nodeData.start)}s`;
-        if (popupRef.current && !popupRef.current.closed) {
-            popupRef.current.location.href = youtubeUrl;
-            popupRef.current.focus();
-        } else {
-            popupRef.current = window.open(youtubeUrl, 'youtubePopup', 'width=800,height=600,scrollbars=no,resizable=no,left=1200,top=200');
+    useEffect(() => {
+        if (speakerSelectRef.current) {
+            speakerSelectRef.current.style.backgroundColor = diarizationColors[selectedSpeaker];
         }
-    };
-
-    const handleClick = (event: React.MouseEvent) => {
-        event.stopPropagation();
-    }
+    }, [selectedSpeaker, diarizationColors]);
 
     return (
         <div
             style={{ top, left }}
             className="absolute bg-white border border-gray-300 shadow-lg z-50 p-2 rounded-md"
-            onClick={handleClick}
+            onClick={(event: React.MouseEvent) => {
+                event.stopPropagation();
+            }}
             {...props}
         >
             This block is
             <select
-                value={selectedOption}
-                onChange={handleOptionChange}
+                ref={positionSelectRef}
+                value={selectedPosition}
+                onChange={handlePositionChange}
                 className="block w-full p-2 my-1 bg-gray-100 rounded-md"
             >
-                {/* ここのvalueはMenuDiarizationで変更された値を反映させる */}
-                <option value={0}>PM</option> 
+                <option value={0}>PM</option>
                 <option value={1}>LO</option>
                 <option value={2}>DPM</option>
                 <option value={3}>DLO</option>
@@ -93,12 +78,39 @@ function MenuAsr({ id, top, left, right, bottom, nodeData, type, nodes, setNodes
                 <option value={-1}>None</option>
             </select>
 
-            <button
-                onClick={jumpVideo}
-                className="block w-full p-2 my-1 bg-red-600 rounded-md hover:bg-red-500"
-            >
-                <span style={{ color: 'white' }}>▶</span>
-            </button>
+            presented by
+
+            {selectedPosition === -1 ? (
+                <span className="block w-full p-2 my-1 bg-gray-300 rounded-md">None</span>
+            ) : (
+                <select
+                    ref={speakerSelectRef}
+                    value={selectedSpeaker}
+                    onChange={handleSpeakerChange}
+                    className="block w-full p-2 my-1 bg-gray-100 rounded-md"
+                >
+                    <option value={1} style={{ backgroundColor: diarizationColors[1] }}>SPEAKER_01</option>
+                    <option value={2} style={{ backgroundColor: diarizationColors[2] }}>SPEAKER_02</option>
+                    <option value={3} style={{ backgroundColor: diarizationColors[3] }}>SPEAKER_03</option>
+                    <option value={4} style={{ backgroundColor: diarizationColors[4] }}>SPEAKER_04</option>
+                    <option value={5} style={{ backgroundColor: diarizationColors[5] }}>SPEAKER_05</option>
+                    <option value={6} style={{ backgroundColor: diarizationColors[6] }}>SPEAKER_06</option>
+                    <option value={7} style={{ backgroundColor: diarizationColors[7] }}>SPEAKER_07</option>
+                    <option value={8} style={{ backgroundColor: diarizationColors[8] }}>SPEAKER_08</option>
+                    <option value={9} style={{ backgroundColor: diarizationColors[9] }}>SPEAKER_09</option>
+                    <option value={10} style={{ backgroundColor: diarizationColors[10] }}>SPEAKER_10</option>
+                    <option value={11} style={{ backgroundColor: diarizationColors[11] }}>SPEAKER_11</option>
+                    <option value={12} style={{ backgroundColor: diarizationColors[12] }}>SPEAKER_12</option>
+                    <option value={13} style={{ backgroundColor: diarizationColors[13] }}>SPEAKER_13</option>
+                    <option value={14} style={{ backgroundColor: diarizationColors[14] }}>SPEAKER_14</option>
+                    <option value={15} style={{ backgroundColor: diarizationColors[15] }}>SPEAKER_15</option>
+                    <option value={16} style={{ backgroundColor: diarizationColors[16] }}>SPEAKER_16</option>
+                    <option value={17} style={{ backgroundColor: diarizationColors[17] }}>SPEAKER_17</option>
+                    <option value={18} style={{ backgroundColor: diarizationColors[18] }}>SPEAKER_18</option>
+                    <option value={19} style={{ backgroundColor: diarizationColors[19] }}>SPEAKER_19</option>
+                    <option value={20} style={{ backgroundColor: diarizationColors[20] }}>SPEAKER_20</option>
+                </select>
+            )}
         </div>
     );
 }
