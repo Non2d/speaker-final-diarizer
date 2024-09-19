@@ -31,7 +31,7 @@ const NodeTimeLabel: React.FC<NodeTimeLabelProps> = ({ data }) => {
         textDecoration: 'none',
         color: '#1a73e8',
         fontWeight: 'bold',
-        padding: '0px 10px',
+        padding: '0px 1px',
         borderRadius: '5px',
         transition: 'background-color 0.3s, color 0.3s',
       }}

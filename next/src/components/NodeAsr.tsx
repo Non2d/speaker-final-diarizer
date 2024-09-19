@@ -7,11 +7,12 @@ interface NodeAsrProps {
     end: number;
     text: string;
     positionId: number;
+    isPoi: boolean;
   };
 }
 
 const NodeAsr = ({ data }: NodeAsrProps) => {
-  const { text, start, end, positionId } = data;
+  const { text, start, end, positionId, isPoi } = data;
   const zoomLevel = 10; // 1秒あたりの縦幅
   const width = 1000;
   const height = zoomLevel * (end - start);
@@ -44,7 +45,8 @@ const NodeAsr = ({ data }: NodeAsrProps) => {
             zIndex: 0, // Z方向の重ね順で一番後ろに配置
           }}
         >
-          {speechIdToPositionName[positionId]}
+          {isPoi && <span style={{ fontSize: '0.8em', color: 'gray' }}>&lt;POI&gt;</span>}
+          {speechIdToPositionName[positionId]} 
         </span>
         <span
           style={{

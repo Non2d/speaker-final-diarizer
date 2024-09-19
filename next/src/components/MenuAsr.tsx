@@ -1,6 +1,9 @@
 import React, { useState } from 'react';
 import { toast } from 'react-hot-toast';
 import speechIdToPositionName from '../utils/speechIdToPositionName';
+import nodeIdToNumber from '../utils/nodeIdToNumber';
+
+import { useAppContext } from '../context/context';
 
 interface ContextMenuProps {
     id: string;
@@ -10,6 +13,7 @@ interface ContextMenuProps {
     bottom: number;
     nodeData: any;
     type: string;
+    setMenu: React.Dispatch<React.SetStateAction<any>>;
     asrDiars: any;
     setAsrDiars: React.Dispatch<React.SetStateAction<any>>;
     previousIsTop: boolean;
@@ -17,9 +21,10 @@ interface ContextMenuProps {
     [key: string]: any;
 }
 
-function MenuAsr({ id, top, left, right, bottom, nodeData, type, asrDiars, setAsrDiars, previousIsTop, setPreviousIsTop, ...props }: ContextMenuProps) {
+function MenuAsr({ id, top, left, right, bottom, nodeData, type, setMenu, asrDiars, setAsrDiars, previousIsTop, setPreviousIsTop, ...props }: ContextMenuProps) {
     const [isTop, setIsTop] = useState(!previousIsTop);
     const [selectedPosition, setSelectedPosition] = useState(-1);
+    const { pois, setPois } = useAppContext();
 
     const handlePositionChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
         const newSelectedPosition = Number(event.target.value);
@@ -32,31 +37,47 @@ function MenuAsr({ id, top, left, right, bottom, nodeData, type, asrDiars, setAs
         //     return;
         // }
         // やるんなら徹底的にやらないとデッドロックになる
-        setAsrDiars(asrDiars.map((asrDiars: any) => {
-            if (asrDiars.positionId === newSelectedPosition) {
-                if (isTop) {
-                    return {
-                        ...asrDiars,
-                        start: id,
-                    };
-                } else {
-                    return {
-                        ...asrDiars,
-                        end: id,
-                    };
+
+        if (newSelectedPosition == -2) { //POIの設定
+            setPois(pois.concat(nodeIdToNumber(id))); //push(id) を使うのではなく、setPois(pois.concat(id)) のように新しい配列を作成して状態を更新すべき
+            //このidは歯抜けがあると最終的な出力のidとは一致しないことに注意
+            //そう考えるとやはり、最終的な出力はノードを直接走査して取得すべきだな
+            toast.success(
+                <span>
+                    <strong>{id}</strong> is set as POI.
+                </span>,
+                { duration: 5000 }
+            );
+            setMenu(null);
+            return;
+        } else {
+            setAsrDiars(asrDiars.map((asrDiars: any) => {
+                if (asrDiars.positionId === newSelectedPosition) {
+                    if (isTop) {
+                        return {
+                            ...asrDiars,
+                            start: id,
+                        };
+                    } else {
+                        return {
+                            ...asrDiars,
+                            end: id,
+                        };
+                    }
                 }
-            }
-            return asrDiars;
-        }));
+                return asrDiars;
+            }));
 
-        toast.success(
-            <span>
-                <strong>{id}</strong> is set as <strong>{speechIdToPositionName[newSelectedPosition]}</strong>'s <strong>{isTop ? "top" : "last"}</strong> seg.
-            </span>,
-            { duration: 5000 }
-        );
+            toast.success(
+                <span>
+                    <strong>{id}</strong> is set as <strong>{speechIdToPositionName[newSelectedPosition]}</strong>'s <strong>{isTop ? "top" : "last"}</strong> seg.
+                </span>,
+                { duration: 5000 }
+            );
 
-        setPreviousIsTop(isTop);
+            setPreviousIsTop(isTop);
+            setMenu(null);
+        }
     };
 
     return (
@@ -106,10 +127,10 @@ function MenuAsr({ id, top, left, right, bottom, nodeData, type, asrDiars, setAs
                 <option value={6}>LOR</option>
                 <option value={7}>PMR</option>
                 <option value={-1}>None</option>
+                <option value={-2}>POI</option>
             </select>
 
         </div>
     );
 }
-
 export default MenuAsr;

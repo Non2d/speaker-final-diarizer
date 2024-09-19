@@ -12,6 +12,8 @@ import MenuAsr from './MenuAsr';
 
 import nodeIdToNumber from '../utils/nodeIdToNumber';
 
+import { useAppContext } from '../context/context';
+
 interface Node {
     id: string;
     data: any;
@@ -43,11 +45,6 @@ interface MenuDiarizationProps {
     nodeData: any;
     type: string;
     [key: string]: any; // その他のプロパティを許可
-}
-
-interface SpeakerData {
-    positionId: number;
-    diarizationId: number;
 }
 
 //文字起こしデータの取得・設定
@@ -101,7 +98,7 @@ const Timeline = () => {
         return {
             id: `asr-${index}`,
             type: 'NodeAsr',
-            data: { text: asr.text, start: asr.start, end: asr.end, positionId: -1 },
+            data: { text: asr.text, start: asr.start, end: asr.end, positionId: -1, isPoi: false },
             position: { x: 70, y: zoomLevel * asr.start },
         };
     });
@@ -178,9 +175,10 @@ const Timeline = () => {
 
     //Menus
     const [menu, setMenu] = useState<MenuDiarizationProps | null>(null);
+    const [rightMenu, setRightMenu] = useState<MenuDiarizationProps | null>(null);
     const ref = useRef<HTMLDivElement>(null);
 
-    const onNodeContextMenu = useCallback(
+    const onNodeClick = useCallback(
         (event: React.MouseEvent, node: any) => {
             // Prevent native context menu from showing
             event.preventDefault();
@@ -219,6 +217,14 @@ const Timeline = () => {
         [setMenu],
     );
 
+    const onNodeContextMenu = useCallback(
+        (event: React.MouseEvent, node: any) => {
+            event.preventDefault();
+            console.log('Node Context Menu');
+        },
+        [setRightMenu],
+    );
+
     // Diarization Datas
     const [asrDiars, setAsrDiars] = useState<any[]>([
         { positionId: 0, start: undefined, end: undefined }, //PM
@@ -231,9 +237,10 @@ const Timeline = () => {
         { positionId: 7, start: undefined, end: undefined }, //PMR
     ]);
 
-    useEffect(() => {
-        console.log(asrDiars);
+    const { pois, setPois } = useAppContext();
 
+    useEffect(() => {
+        // やっぱり重いし遅い
         const newNodes = nodes.map((node) => {
             const id = nodeIdToNumber(node.id);
             if (node.type === 'NodeAsr') {
@@ -250,11 +257,14 @@ const Timeline = () => {
                 // positionId を更新するロジック (例として最初の positionId を使用)
                 const positionId = positionIds.length > 0 ? positionIds[0] : -1;
 
+                const isPoi = pois.includes(id);
+
                 return {
                     ...node,
                     data: {
                         ...node.data,
                         positionId,
+                        isPoi,
                     },
                 };
             }
@@ -263,11 +273,10 @@ const Timeline = () => {
 
         setNodes(newNodes);
 
-    }, [asrDiars]);
+    }, [asrDiars, pois]);
 
     //util
     const [previousIsTop, setPreviousIsTop] = useState(true);
-
 
     return (
         <div style={{ width: '100vw', height: '100vh' }}>
@@ -275,18 +284,22 @@ const Timeline = () => {
                 ref={ref}
                 nodes={nodes}
                 nodeTypes={{ NodeAsr: NodeAsr, NodeTimeLabel: NodeTimeLabel, NodeDiarization: NodeDiarization }}
-                onClick={() => setMenu(null)}
+                onPaneClick={() => setMenu(null)}
                 panOnScroll
+                onNodeClick={(event, node) => {
+                    onNodeClick(event, node);// ノードがクリックされたときはメニューを閉じない
+                    event.stopPropagation(); // 親要素へのクリックイベント伝播を止める
+                }}
                 onNodeContextMenu={onNodeContextMenu}
             >
                 <Background
                     variant={BackgroundVariant.Lines}
-                    gap={[100000, 60]}
+                    gap={[10000, 60]}
                     lineWidth={2}
                 />
             </ReactFlow>
             {/* ReactFlow外にMenuを移動 */}
-            {menu && menu.type === 'MenuAsr' && <MenuAsr asrDiars={asrDiars} setAsrDiars={setAsrDiars} previousIsTop={previousIsTop} setPreviousIsTop={setPreviousIsTop} {...menu} />}
+            {menu && menu.type === 'MenuAsr' && <MenuAsr setMenu={setMenu} asrDiars={asrDiars} setAsrDiars={setAsrDiars} previousIsTop={previousIsTop} setPreviousIsTop={setPreviousIsTop} {...menu} />}
             <div
                 onClick={() => setIsNA(!isNA)}
                 style={{
@@ -316,7 +329,6 @@ const Timeline = () => {
                 <span style={{ color: 'black' }}> style</span>
             </div>
         </div>
-
     );
 };
 
