@@ -1,5 +1,6 @@
-import React from 'react';
-import speechIdToPositionName, { isGovernment } from '../utils/speechIdToPositionName';
+import React, { useState, useEffect } from 'react';
+import { speechIdToPositionNameAsian, speechIdToPositionNameNA, isGovernment } from '../utils/speechIdToPositionName';
+import { useAppContext } from '../context/context';
 
 interface NodeAsrProps {
   data: {
@@ -12,10 +13,16 @@ interface NodeAsrProps {
 }
 
 const NodeAsr = ({ data }: NodeAsrProps) => {
+  const { nodeTransparency, isNA, zoomLevel } = useAppContext();
+
   const { text, start, end, positionId, isPoi } = data;
-  const zoomLevel = 10; // 1秒あたりの縦幅
-  const width = 1000;
   const height = zoomLevel * (end - start);
+  const fixedStart = zoomLevel * start;
+  const [speechIdToPositionName, setSpeechIdToPositionName] = useState(speechIdToPositionNameNA);
+
+  useEffect(() => {
+    setSpeechIdToPositionName(isNA ? speechIdToPositionNameNA : speechIdToPositionNameAsian);
+  }, [isNA]);
 
   const isGov = isGovernment(speechIdToPositionName[positionId]);
   const positionLabelColor = isGov ? 'text-red-400' : 'text-blue-400';
@@ -24,9 +31,9 @@ const NodeAsr = ({ data }: NodeAsrProps) => {
     <div
       className="border border-gray-500 rounded flex items-center"
       style={{
-        width: `${width}px`,
+        width: `80vw`,
         height: `${height}px`,
-        backgroundColor: "white",
+        backgroundColor: `rgba(255, 255, 255, ${nodeTransparency})`,
       }}
     >
       <div
@@ -38,7 +45,7 @@ const NodeAsr = ({ data }: NodeAsrProps) => {
         }}
       >
         <span
-          className={`absolute top-0 right-0 px-1 ${positionLabelColor}`}
+          className={`absolute top-1 right-0 px-1 ${positionLabelColor}`}
           style={{
             fontSize: '20px', // テキストサイズを小さくする
             transform: 'translateY(-25%)', // 上に移動させる

@@ -9,10 +9,16 @@ import NodeTimeLabel from './NodeTimeLabel';
 import NodeDiarization from './NodeDiarization';
 
 import MenuAsr from './MenuAsr';
+import MenuAsrRight from './MenuAsrRight';
 
 import nodeIdToNumber from '../utils/nodeIdToNumber';
 
 import { useAppContext } from '../context/context';
+
+import { toast } from 'react-hot-toast';
+import { speechIdToPositionNameAsian, speechIdToPositionNameNA } from '../utils/speechIdToPositionName';
+
+import SidebarTimeline from './SidebarTimeline';
 
 interface Node {
     id: string;
@@ -49,106 +55,81 @@ interface MenuDiarizationProps {
 
 //文字起こしデータの取得・設定
 const Timeline = () => {
-    const nodeWidth = 1000;
-    const diarizationWidth = 20;
-    const zoomLevel = 10;
+    const { pois, setPois, nodeTransparency, setNodeTransparency, isNA, setIsNA, zoomLevel, setZoomLevel, asrFileName, setAsrFileName, diarizationFileName, setDiarizationFileName, exportFileName, setExportFileName } = useAppContext();
 
     const [asrs, setAsrs] = React.useState<Asr[]>([]);
     const [diarizations, setDiarizations] = React.useState<Diarization[]>([]);
 
-    //style
-    const [isNA, setIsNA] = useState(false);
-
     // Asr
-    useEffect(() => {
-        const fetchData = async () => {
-            const response = await fetch('/test-data/output_asr-0907/soturon/The Kansai 2018 R4.mp3.csv');
-            if (!response.ok) {
-                throw new Error('Failed to fetch data');
+    const handleAsrFileSelect = (file: File) => {
+        setAsrFileName(file.name);
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const text = e.target?.result;
+            if (typeof text === 'string') {
+                const parsedData = Papa.parse<Asr>(text, {
+                    header: true,
+                    skipEmptyLines: true,
+                    dynamicTyping: true
+                });
+                const formattedData = parsedData.data
+                    .filter(item => !isNaN(Number(item.start)) && !isNaN(Number(item.end))) // Filter out invalid entries
+                    .map((item) => ({
+                        start: item.start,
+                        end: item.end,
+                        text: item.text // Assuming item.text is the correct value
+                    }));
+                setAsrs(formattedData); // Store data in state
             }
-            if (!response.body) {
-                throw new Error('Response body is null');
-            }
-            const reader = response.body.getReader();
-            const result = await reader.read(); // raw array
-            const decoder = new TextDecoder('utf-8');
-            const csv = decoder.decode(result.value); // CSV text
-            const parsedData = Papa.parse<Asr>(csv, {
-                header: true,
-                skipEmptyLines: true,
-                dynamicTyping: true
-            }); // Parse CSV
-
-            // データの整形
-            const formattedData = parsedData.data
-                .filter(item => !isNaN(Number(item.start)) && !isNaN(Number(item.end))) // Filter out invalid entries
-                .map((item) => ({
-                    start: item.start,
-                    end: item.end,
-                    text: item.text // Assuming item.text is the correct value
-                }));
-
-            setAsrs(formattedData); // Store data in state
         };
+        reader.readAsText(file);
+    };
 
-        fetchData();
-    }, []);
-
-    const initialAsrNodes = asrs.map((asr, index) => {
+    const initAsrNodes = asrs.map((asr, index) => {
         return {
             id: `asr-${index}`,
             type: 'NodeAsr',
             data: { text: asr.text, start: asr.start, end: asr.end, positionId: -1, isPoi: false },
-            position: { x: 70, y: zoomLevel * asr.start },
+            position: { x: 90, y: zoomLevel * asr.start },
         };
     });
 
     // Diarization
-    useEffect(() => {
-        const fetchData = async () => {
-            const response = await fetch('/test-data/output_diarization/soturon/The Kansai 2018 R4.csv');
-            if (!response.ok) {
-                throw new Error('Failed to fetch data');
+    const handleDiarizationFileSelect = (file: File) => {
+        setDiarizationFileName(file.name);
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const text = e.target?.result;
+            if (typeof text === 'string') {
+                const parsedData = Papa.parse<Diarization>(text, {
+                    header: true,
+                    skipEmptyLines: true,
+                    dynamicTyping: true
+                });
+                const formattedData = parsedData.data
+                    .filter(item => !isNaN(Number(item.start)) && !isNaN(Number(item.end))) // Filter out invalid entries
+                    .map((item) => {
+                        const speakerString = String(item.speaker) || ''; // Ensure speaker is a string
+                        const speakerNumber = parseInt(speakerString.match(/\d+/)?.[0] || '-1', 10); // Extract number from speaker string
+                        return {
+                            start: item.start,
+                            end: item.end,
+                            speaker: speakerNumber
+                        };
+                    })
+                    .filter(item => item.speaker !== -1); // Filter out entries with invalid speaker numbers
+                setDiarizations(formattedData); // Store data in state
             }
-            if (!response.body) {
-                throw new Error('Response body is null');
-            }
-            const reader = response.body.getReader();
-            const result = await reader.read(); // raw array
-            const decoder = new TextDecoder('utf-8');
-            const csv = decoder.decode(result.value); // CSV text
-            const parsedData = Papa.parse<Diarization>(csv, {
-                header: true,
-                skipEmptyLines: true,
-                dynamicTyping: true
-            }); // Parse CSV
-
-            // データの整形
-            const formattedData = parsedData.data
-                .filter(item => !isNaN(Number(item.start)) && !isNaN(Number(item.end))) // Filter out invalid entries
-                .map((item) => {
-                    const speakerString = String(item.speaker) || ''; // Ensure speaker is a string
-                    const speakerNumber = parseInt(speakerString.match(/\d+/)?.[0] || '-1', 10); // Extract number from speaker string
-                    return {
-                        start: item.start,
-                        end: item.end,
-                        speaker: speakerNumber
-                    };
-                })
-                .filter(item => item.speaker !== -1); // Filter out entries with invalid speaker numbers
-
-            setDiarizations(formattedData); // Store data in state
         };
-
-        fetchData();
-    }, []);
+        reader.readAsText(file);
+    };
 
     const diarizationNodes = diarizations.map((diarization, index) => {
         return {
             id: `dia-${index}`,
             type: 'NodeDiarization',
-            data: { speakerId: diarization.speaker, width: diarizationWidth, height: zoomLevel * (diarization.end - diarization.start) },
-            position: { x: 80 + nodeWidth + 5 * diarization.speaker, y: zoomLevel * diarization.start },
+            data: { speakerId: diarization.speaker, width: 3000, height: zoomLevel * (diarization.end - diarization.start) },
+            position: { x: 90, y: zoomLevel * diarization.start },
         };
     });
 
@@ -167,11 +148,21 @@ const Timeline = () => {
     }
 
     //Initialize all nodes
-    const [nodes, setNodes] = useState<Node[]>([]);
+    const [nodes, setNodes] = useState<Node[]>([
+        ...timeLabels,
+        { id: 'dia-0001', type: 'NodeDiarization', data: { speakerId: 5, width: 3000, height: 60 }, position: { x: 90, y: 120 } },
+        { id: 'dia-0002', type: 'NodeDiarization', data: { speakerId: 6, width: 3000, height: 60 }, position: { x: 90, y: 180 } },
+        { id: 'dia-0003', type: 'NodeDiarization', data: { speakerId: 7, width: 3000, height: 60 }, position: { x: 90, y: 240 } },
+        { id: 'dia-0004', type: 'NodeDiarization', data: { speakerId: 8, width: 3000, height: 60 }, position: { x: 90, y: 300 } },
+        { id: 'asr-0001', type: 'NodeAsr', data: { text: 'This is a debate about whom politics has forgotten.', start: 0, end: 10, positionId: -1, isPoi: false }, position: { x: 90, y: 0 } },
+        { id: 'asr-0002', type: 'NodeAsr', data: { text: 'Indivisuals eliminated when factries closed down.', start: 10, end: 20, positionId: -1, isPoi: false }, position: { x: 90, y: 100 } },
+        { id: 'asr-0003', type: 'NodeAsr', data: { text: 'Individuals may not be experts in governance, but the experts in their own lives.', start: 20, end: 40, positionId: -1, isPoi: false }, position: { x: 90, y: 200 } },
+        { id: 'asr-0004', type: 'NodeAsr', data: { text: 'Team England wants to talk about fear, but I tell you fear comes when you lose hope, because mainstream political party no longer represents you. And honestly, it is very demeaning for team England to come appear and say millions of people are duped, but they do not know what is right for them. We reject that on team opposition.', start: 40, end: 50, positionId: -1, isPoi: false }, position: { x: 90, y: 400 } },
+    ]);
 
-    useEffect(() => {
-        setNodes([...timeLabels, ...diarizationNodes, ...initialAsrNodes]);
-    }, [asrs, diarizations]);
+    useEffect(() => { //これ、おかしくね？
+        setNodes([...timeLabels, ...diarizationNodes, ...initAsrNodes]);
+    }, [asrs, diarizations, zoomLevel]);
 
     //Menus
     const [menu, setMenu] = useState<MenuDiarizationProps | null>(null);
@@ -219,8 +210,39 @@ const Timeline = () => {
 
     const onNodeContextMenu = useCallback(
         (event: React.MouseEvent, node: any) => {
+            // Prevent native context menu from showing
             event.preventDefault();
-            console.log('Node Context Menu');
+
+            if (ref.current === null) {
+                toast.error('Ref is null');
+                return;
+            }
+            const pane = ref.current.getBoundingClientRect();
+
+            if (node.type === 'NodeAsr') {
+                // Node 1用のメニューを表示
+                setRightMenu({
+                    id: node.id,
+                    top: event.clientY,
+                    left: event.clientX,
+                    right: pane.width - event.clientX,
+                    bottom: pane.height - event.clientY,
+                    nodeData: node.data,
+                    type: 'MenuAsr'
+                });
+            } else if (node.type === 'NodeDiarization') {
+                // Node 2用のメニューを表示
+                setRightMenu({
+                    id: node.id,
+                    top: event.clientY,
+                    left: event.clientX,
+                    right: pane.width - event.clientX,
+                    bottom: pane.height - event.clientY,
+                    nodeData: node.data,
+                    type: 'MenuDiarization'
+                });
+            }
+
         },
         [setRightMenu],
     );
@@ -231,24 +253,22 @@ const Timeline = () => {
         { positionId: 1, start: undefined, end: undefined }, //LO
         { positionId: 2, start: undefined, end: undefined }, //DPM
         { positionId: 3, start: undefined, end: undefined }, //DLO
-        { positionId: 4, start: undefined, end: undefined }, //GW
-        { positionId: 5, start: undefined, end: undefined }, //OW
+        { positionId: 4, start: undefined, end: undefined }, //GWまたはLOR
+        { positionId: 5, start: undefined, end: undefined }, //OWまたはPMR
         { positionId: 6, start: undefined, end: undefined }, //LOR
         { positionId: 7, start: undefined, end: undefined }, //PMR
     ]);
 
-    const { pois, setPois } = useAppContext();
-
-    useEffect(() => {
-        // やっぱり重いし遅い
+    useEffect(() => { //ここでノードの更新！！！最新状態の反映！！！！
+        // あとで負荷を減らしたい
         const newNodes = nodes.map((node) => {
             const id = nodeIdToNumber(node.id);
             if (node.type === 'NodeAsr') {
                 // node.id が条件を満たすすべての asrDiar を抽出
                 const matchingAsrDiars = asrDiars.filter((asrDiar) =>
-                    (nodeIdToNumber(asrDiar.start) <= id && id <= nodeIdToNumber(asrDiar.end)) ||
-                    id === nodeIdToNumber(asrDiar.start) ||
-                    id === nodeIdToNumber(asrDiar.end)
+                    (asrDiar.start <= id && id <= asrDiar.end) ||
+                    id === asrDiar.start ||
+                    id === asrDiar.end
                 );
 
                 // 一致する positionId のリストを作成
@@ -275,8 +295,96 @@ const Timeline = () => {
 
     }, [asrDiars, pois]);
 
+    // useEffect(() => { //ここでノードの更新！！！最新状態の反映！！！！
+    //     // あとで負荷を減らしたい
+    //     const newNodes = nodes.map((node) => {
+    //         const id = nodeIdToNumber(node.id);
+    //         if (node.type === 'NodeAsr') {
+    //             // node.id が条件を満たすすべての asrDiar を抽出
+    //             const matchingAsrDiars = asrDiars.filter((asrDiar) =>
+    //                 (asrDiar.start <= id && id <= asrDiar.end) ||
+    //                 id === asrDiar.start ||
+    //                 id === asrDiar.end
+    //             );
+
+    //             // 一致する positionId のリストを作成
+    //             const positionIds = matchingAsrDiars.map((asrDiar) => asrDiar.positionId);
+
+    //             // positionId を更新するロジック (例として最初の positionId を使用)
+    //             const positionId = positionIds.length > 0 ? positionIds[0] : -1;
+
+    //             const isPoi = pois.includes(id);
+
+    //             return {
+    //                 ...node,
+    //                 data: {
+    //                     ...node.data,
+    //                     start: zoomLevel * node.data.start,
+    //                     positionId,
+    //                     isPoi,
+    //                 },
+    //             };
+    //         }
+    //         return node;
+    //     });
+
+    //     setNodes(newNodes);
+
+    // }, [zoomLevel]);
+
     //util
-    const [previousIsTop, setPreviousIsTop] = useState(true);
+    const [previousIsStart, setPreviousIsStart] = useState(false); //初期値をfalseにすると、isStartの初期値がtrueになる
+
+    const defaultViewport: any = {x:0, y:60, zoom:1};
+
+    const handleExportJson = () => {
+        const speechLength = isNA ? 6 : 8;
+        const speechIdToPositionName = isNA ? speechIdToPositionNameNA : speechIdToPositionNameAsian;
+
+        for (let i = 0; i < speechLength; i++) {
+            if (asrDiars[i].start === undefined && asrDiars[i].end === undefined) {
+                toast.error(
+                    <span>
+                        <strong>{speechIdToPositionName[i]}</strong> is not labeled.
+                    </span>,
+                    { duration: 5000 });
+                return;
+            }
+        }
+
+        const speeches: Asr[][] = Array.from({ length: speechLength }, () => []);
+        const pois = [];
+        for (let i = 0; i < nodes.length; i++) {
+            const positionId = nodes[i].data.positionId;
+            if (positionId !== undefined && 0 <= positionId && positionId <= 7) {
+                if (nodes[i].data.isPoi) {
+                    pois.push(nodeIdToNumber(nodes[i].id));
+                }
+                speeches[nodes[i].data.positionId].push({
+                    text: nodes[i].data.text,
+                    start: nodes[i].data.start,
+                    end: nodes[i].data.end
+                });
+            }
+        }
+        const dst = {
+            pois: pois,
+            speeches: speeches
+        }
+
+        const json = JSON.stringify(dst, null, 2);
+        const blob = new Blob([json], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        if (!exportFileName) {
+            toast.error('Export file name is not set.');
+        } else {
+            a.download = exportFileName;
+        }
+        a.click();
+        URL.revokeObjectURL(url);
+    };
 
     return (
         <div style={{ width: '100vw', height: '100vh' }}>
@@ -284,13 +392,30 @@ const Timeline = () => {
                 ref={ref}
                 nodes={nodes}
                 nodeTypes={{ NodeAsr: NodeAsr, NodeTimeLabel: NodeTimeLabel, NodeDiarization: NodeDiarization }}
-                onPaneClick={() => setMenu(null)}
+                onPaneClick={() => {
+                    setMenu(null);
+                    setRightMenu(null);
+                }}
                 panOnScroll
                 onNodeClick={(event, node) => {
+                    if (node.type != 'NodeAsr') {
+                        setMenu(null);
+                        return;
+                    }
+                    setRightMenu(null);
                     onNodeClick(event, node);// ノードがクリックされたときはメニューを閉じない
                     event.stopPropagation(); // 親要素へのクリックイベント伝播を止める
                 }}
-                onNodeContextMenu={onNodeContextMenu}
+                onNodeContextMenu={(event, node) => {
+                    if (node.type != 'NodeAsr') {
+                        setRightMenu(null);
+                        return;
+                    }
+                    setMenu(null);
+                    onNodeContextMenu(event, node); // ノードのコンテキストメニューが開かれたときはメニューを閉じない
+                    event.stopPropagation(); // 親要素へのクリックイベント伝播を止める
+                }}
+                defaultViewport={defaultViewport} // デフォルトのカメラの座標を指定
             >
                 <Background
                     variant={BackgroundVariant.Lines}
@@ -299,35 +424,19 @@ const Timeline = () => {
                 />
             </ReactFlow>
             {/* ReactFlow外にMenuを移動 */}
-            {menu && menu.type === 'MenuAsr' && <MenuAsr setMenu={setMenu} asrDiars={asrDiars} setAsrDiars={setAsrDiars} previousIsTop={previousIsTop} setPreviousIsTop={setPreviousIsTop} {...menu} />}
-            <div
-                onClick={() => setIsNA(!isNA)}
-                style={{
-                    position: 'absolute',
-                    top: 10,
-                    right: 10,
-                    backgroundColor: 'white',
-                    cursor: 'pointer',
-                    textDecoration: 'none',
-                    color: '#1a73e8',
-                    padding: '0px 10px',
-                    borderRadius: '5px',
-                    transition: 'background-color 0.3s, color 0.3s',
-                    zIndex: 1000,
-                    fontSize: '20px',
-                }}
-                onMouseEnter={(e) => {
-                    (e.currentTarget as HTMLDivElement).style.backgroundColor = '#f1f3f4';
-                    (e.currentTarget as HTMLDivElement).style.color = '#0b66c3';
-                }}
-                onMouseLeave={(e) => {
-                    (e.currentTarget as HTMLDivElement).style.backgroundColor = 'white';
-                    (e.currentTarget as HTMLDivElement).style.color = '#1a73e8';
-                }}
-            >
-                <span style={{ color: '#1a73e8', fontWeight: 'bold' }}>{isNA ? 'North American' : 'Asian'}</span>
-                <span style={{ color: 'black' }}> style</span>
-            </div>
+            {menu && menu.type === 'MenuAsr' && <MenuAsr setMenu={setMenu} asrDiars={asrDiars} setAsrDiars={setAsrDiars} previousIsStart={previousIsStart} setPreviousIsStart={setPreviousIsStart} {...menu} />}
+            {rightMenu && rightMenu.type === 'MenuAsr' && <MenuAsrRight setRightMenu={setRightMenu} asrDiars={asrDiars} setAsrDiars={setAsrDiars} previousIsStart={previousIsStart} setPreviousIsStart={setPreviousIsStart} {...rightMenu} />}
+            <SidebarTimeline
+                isNA={isNA}
+                setIsNA={setIsNA}
+                zoomLevel={zoomLevel}
+                setZoomLevel={setZoomLevel}
+                nodeTransparency={nodeTransparency}
+                setNodeTransparency={setNodeTransparency}
+                handleExportJson={handleExportJson}
+                onAsrFileSelect={handleAsrFileSelect}
+                onDiarizationFileSelect={handleDiarizationFileSelect}
+            />
         </div>
     );
 };

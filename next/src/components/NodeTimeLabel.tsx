@@ -1,4 +1,5 @@
 import React, { useRef } from 'react';
+import { useAppContext } from '../context/context';
 
 interface NodeTimeLabelProps {
   data: {
@@ -7,14 +8,16 @@ interface NodeTimeLabelProps {
 }
 
 const NodeTimeLabel: React.FC<NodeTimeLabelProps> = ({ data }) => {
+  const { youtubeLink } = useAppContext();
+
   const hours = Math.floor(data.seconds / 3600);
   const minutes = Math.floor((data.seconds % 3600) / 60);
   const seconds = data.seconds % 60;
-  const formattedTime = `${hours}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+  const formattedTime = `${hours}:${String(minutes).padStart(2, '0')}:${seconds.toFixed(2).padStart(5, '0')}`;
 
   const popupRef = useRef<Window | null>(null);
   const jumpVideo = () => {
-    const youtubeUrl = `https://www.youtube.com/watch?v=tuxREnaOR5M&t=${Math.floor(data.seconds)}s`;
+    const youtubeUrl = `${youtubeLink}`+`&t=${Math.floor(data.seconds)}s`;
     if (popupRef.current && !popupRef.current.closed) {
       popupRef.current.location.href = youtubeUrl;
       popupRef.current.focus();

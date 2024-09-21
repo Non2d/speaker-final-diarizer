@@ -1,4 +1,4 @@
-const speechIdToPositionNameAsian = [
+export const speechIdToPositionNameAsian = [
     "PM",
     "LO",
     "DPM",
@@ -8,8 +8,6 @@ const speechIdToPositionNameAsian = [
     "LOR",
     "PMR",
 ];
-
-export default speechIdToPositionNameAsian;
 
 export const speechIdToPositionNameNA = [
     "PM",
