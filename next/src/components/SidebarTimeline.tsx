@@ -15,6 +15,8 @@ interface SidebarTimelineProps {
 }
 
 const SidebarTimeline = ({ isNA, setIsNA, zoomLevel, setZoomLevel, nodeTransparency, setNodeTransparency, handleExportJson, onAsrFileSelect, onDiarizationFileSelect }: SidebarTimelineProps) => {
+    const YOUTUBE_API_KEY = process.env.NEXT_PUBLIC_YOUTUBE_API_KEY;
+
     const { asrFileName, setAsrFileName, diarizationFileName, setDiarizationFileName, exportFileName, setExportFileName, youtubeLink, setYoutubeLink } = useAppContext();
 
     const [isOpen, setIsOpen] = useState(false);
@@ -51,11 +53,26 @@ const SidebarTimeline = ({ isNA, setIsNA, zoomLevel, setZoomLevel, nodeTranspare
                             id="asr-file-upload"
                             type="file"
                             accept=".csv"
-                            onChange={(e) => {
+                            onChange={async (e) => {
                                 if (e.target.files && e.target.files.length > 0) {
                                     onAsrFileSelect(e.target.files[0]);
                                     setAsrFileName(e.target.files[0].name);
-                                    setExportFileName(e.target.files[0].name.replace(/\..*$/, '') + ".json");
+
+                                    const exportFileNameWoExt = e.target.files[0].name.replace(/\..*$/, '');
+                                    setExportFileName(exportFileNameWoExt + ".json");
+                                    const response = await fetch(
+                                        `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(
+                                            exportFileNameWoExt
+                                        )}&key=${YOUTUBE_API_KEY}`
+                                    );
+                                    const data = await response.json();
+                                    if (data.items && data.items.length > 0) {
+                                        const firstVideo = data.items[0];
+                                        const inputYoutubeUrl = `https://www.youtube.com/watch?v=${firstVideo.id.videoId}`;
+                                        setYoutubeLink(inputYoutubeUrl);
+                                    } else {
+                                        setYoutubeLink('Video not found from uploaded file name.');
+                                    }
                                 } else {
                                     setAsrFileName(null);
                                 }
@@ -82,11 +99,27 @@ const SidebarTimeline = ({ isNA, setIsNA, zoomLevel, setZoomLevel, nodeTranspare
                             id="diarization-file-upload"
                             type="file"
                             accept=".csv"
-                            onChange={(e) => {
+                            onChange={async (e) => {
                                 if (e.target.files && e.target.files.length > 0) {
                                     onDiarizationFileSelect(e.target.files[0]);
                                     setDiarizationFileName(e.target.files[0].name);
                                     setExportFileName(e.target.files[0].name.replace(/\..*$/, '') + ".json");
+
+                                    const exportFileNameWoExt = e.target.files[0].name.replace(/\..*$/, '');
+                                    setExportFileName(exportFileNameWoExt + ".json");
+                                    const response = await fetch(
+                                        `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(
+                                            exportFileNameWoExt
+                                        )}&key=${YOUTUBE_API_KEY}`
+                                    );
+                                    const data = await response.json();
+                                    if (data.items && data.items.length > 0) {
+                                        const firstVideo = data.items[0];
+                                        const inputYoutubeUrl = `https://www.youtube.com/watch?v=${firstVideo.id.videoId}`;
+                                        setYoutubeLink(inputYoutubeUrl);
+                                    } else {
+                                        setYoutubeLink('Video not found from uploaded file name.');
+                                    }
                                 } else {
                                     setDiarizationFileName(null);
                                 }

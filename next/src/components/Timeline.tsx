@@ -19,6 +19,7 @@ import { toast } from 'react-hot-toast';
 import { speechIdToPositionNameAsian, speechIdToPositionNameNA } from '../utils/speechIdToPositionName';
 
 import SidebarTimeline from './SidebarTimeline';
+import { init } from 'next/dist/compiled/webpack/webpack';
 
 interface Node {
     id: string;
@@ -56,9 +57,35 @@ interface MenuDiarizationProps {
 //文字起こしデータの取得・設定
 const Timeline = () => {
     const { pois, setPois, nodeTransparency, setNodeTransparency, isNA, setIsNA, zoomLevel, setZoomLevel, asrFileName, setAsrFileName, diarizationFileName, setDiarizationFileName, exportFileName, setExportFileName } = useAppContext();
-
     const [asrs, setAsrs] = React.useState<Asr[]>([]);
     const [diarizations, setDiarizations] = React.useState<Diarization[]>([]);
+
+    // time labels
+    const timeLabels: Node[] = [];
+    const interval = 5;
+    const duration = 180 * zoomLevel
+
+    for (let i = 0; i <= duration; i += interval) {
+        timeLabels.push({
+            id: `tl-${i + 1}`,
+            type: 'NodeTimeLabel',
+            data: { seconds: i * 60 / zoomLevel },
+            position: { x: 0, y: -13 + i * 60 },
+        });
+    }
+
+    // Initial nodes
+    const [nodes, setNodes] = useState<Node[]>([
+        ...timeLabels,
+        // { id: 'dia-0001', type: 'NodeDiarization', data: { speakerId: 5, width: 3000, height: 60 }, position: { x: 90, y: 120 } },
+        // { id: 'dia-0002', type: 'NodeDiarization', data: { speakerId: 6, width: 3000, height: 60 }, position: { x: 90, y: 180 } },
+        // { id: 'dia-0003', type: 'NodeDiarization', data: { speakerId: 7, width: 3000, height: 60 }, position: { x: 90, y: 240 } },
+        // { id: 'dia-0004', type: 'NodeDiarization', data: { speakerId: 8, width: 3000, height: 60 }, position: { x: 90, y: 300 } },
+        // { id: 'asr-0001', type: 'NodeAsr', data: { text: 'This is a debate about whom politics has forgotten.', start: 0, end: 10, positionId: -1, isPoi: false }, position: { x: 90, y: 0 } },
+        // { id: 'asr-0002', type: 'NodeAsr', data: { text: 'Indivisuals eliminated when factries closed down.', start: 10, end: 20, positionId: -1, isPoi: false }, position: { x: 90, y: 100 } },
+        // { id: 'asr-0003', type: 'NodeAsr', data: { text: 'Individuals may not be experts in governance, but the experts in their own lives.', start: 20, end: 40, positionId: -1, isPoi: false }, position: { x: 90, y: 200 } },
+        // { id: 'asr-0004', type: 'NodeAsr', data: { text: 'Team England wants to talk about fear, but I tell you fear comes when you lose hope, because mainstream political party no longer represents you. And honestly, it is very demeaning for team England to come appear and say millions of people are duped, but they do not know what is right for them. We reject that on team opposition.', start: 40, end: 50, positionId: -1, isPoi: false }, position: { x: 90, y: 400 } },
+    ]);
 
     // Asr
     const handleAsrFileSelect = (file: File) => {
@@ -84,15 +111,6 @@ const Timeline = () => {
         };
         reader.readAsText(file);
     };
-
-    const initAsrNodes = asrs.map((asr, index) => {
-        return {
-            id: `asr-${index}`,
-            type: 'NodeAsr',
-            data: { text: asr.text, start: asr.start, end: asr.end, positionId: -1, isPoi: false },
-            position: { x: 90, y: zoomLevel * asr.start },
-        };
-    });
 
     // Diarization
     const handleDiarizationFileSelect = (file: File) => {
@@ -124,44 +142,34 @@ const Timeline = () => {
         reader.readAsText(file);
     };
 
-    const diarizationNodes = diarizations.map((diarization, index) => {
-        return {
-            id: `dia-${index}`,
-            type: 'NodeDiarization',
-            data: { speakerId: diarization.speaker, width: 3000, height: zoomLevel * (diarization.end - diarization.start) },
-            position: { x: 90, y: zoomLevel * diarization.start },
-        };
-    });
-
-    // Time Label
-    const timeLabels: Node[] = [];
-    const interval = 5;
-    const duration = 180 * zoomLevel
-
-    for (let i = 0; i <= duration; i += interval) {
-        timeLabels.push({
-            id: `tl-${i + 1}`,
-            type: 'NodeTimeLabel',
-            data: { seconds: i * 60 / zoomLevel },
-            position: { x: 0, y: -13 + i * 60 },
-        });
-    }
-
     //Initialize all nodes
-    const [nodes, setNodes] = useState<Node[]>([
-        ...timeLabels,
-        { id: 'dia-0001', type: 'NodeDiarization', data: { speakerId: 5, width: 3000, height: 60 }, position: { x: 90, y: 120 } },
-        { id: 'dia-0002', type: 'NodeDiarization', data: { speakerId: 6, width: 3000, height: 60 }, position: { x: 90, y: 180 } },
-        { id: 'dia-0003', type: 'NodeDiarization', data: { speakerId: 7, width: 3000, height: 60 }, position: { x: 90, y: 240 } },
-        { id: 'dia-0004', type: 'NodeDiarization', data: { speakerId: 8, width: 3000, height: 60 }, position: { x: 90, y: 300 } },
-        { id: 'asr-0001', type: 'NodeAsr', data: { text: 'This is a debate about whom politics has forgotten.', start: 0, end: 10, positionId: -1, isPoi: false }, position: { x: 90, y: 0 } },
-        { id: 'asr-0002', type: 'NodeAsr', data: { text: 'Indivisuals eliminated when factries closed down.', start: 10, end: 20, positionId: -1, isPoi: false }, position: { x: 90, y: 100 } },
-        { id: 'asr-0003', type: 'NodeAsr', data: { text: 'Individuals may not be experts in governance, but the experts in their own lives.', start: 20, end: 40, positionId: -1, isPoi: false }, position: { x: 90, y: 200 } },
-        { id: 'asr-0004', type: 'NodeAsr', data: { text: 'Team England wants to talk about fear, but I tell you fear comes when you lose hope, because mainstream political party no longer represents you. And honestly, it is very demeaning for team England to come appear and say millions of people are duped, but they do not know what is right for them. We reject that on team opposition.', start: 40, end: 50, positionId: -1, isPoi: false }, position: { x: 90, y: 400 } },
-    ]);
-
-    useEffect(() => { //これ、おかしくね？
-        setNodes([...timeLabels, ...diarizationNodes, ...initAsrNodes]);
+    useEffect(() => {
+        const asrNodes = asrs.map((asr, index) => {
+            console.log(zoomLevel);
+            const existingNode = nodes.find(node => node.id === `asr-${index}`);
+            return {
+                id: `asr-${index}`,
+                type: 'NodeAsr',
+                data: {
+                    text: asr.text,
+                    start: asr.start,
+                    end: asr.end,
+                    positionId: existingNode?.data.positionId,
+                    isPoi: existingNode?.data.isPoi
+                },
+                position: { x: 90, y: zoomLevel * asr.start },
+            }
+        });
+        const diarizationNodes = diarizations.map((diarization, index) => {
+            return {
+                id: `dia-${index}`,
+                type: 'NodeDiarization',
+                data: { speakerId: diarization.speaker, width: 3000, height: zoomLevel * (diarization.end - diarization.start) },
+                position: { x: 90, y: zoomLevel * diarization.start },
+            };
+        });
+        
+        setNodes([...timeLabels, ...diarizationNodes, ...asrNodes]);
     }, [asrs, diarizations, zoomLevel]);
 
     //Menus
@@ -335,7 +343,7 @@ const Timeline = () => {
     //util
     const [previousIsStart, setPreviousIsStart] = useState(false); //初期値をfalseにすると、isStartの初期値がtrueになる
 
-    const defaultViewport: any = {x:0, y:60, zoom:1};
+    const defaultViewport: any = { x: 0, y: 60, zoom: 1 };
 
     const handleExportJson = () => {
         const speechLength = isNA ? 6 : 8;

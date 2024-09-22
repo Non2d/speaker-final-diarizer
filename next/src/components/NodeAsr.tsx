@@ -17,7 +17,6 @@ const NodeAsr = ({ data }: NodeAsrProps) => {
 
   const { text, start, end, positionId, isPoi } = data;
   const height = zoomLevel * (end - start);
-  const fixedStart = zoomLevel * start;
   const [speechIdToPositionName, setSpeechIdToPositionName] = useState(speechIdToPositionNameNA);
 
   useEffect(() => {
@@ -60,6 +59,7 @@ const NodeAsr = ({ data }: NodeAsrProps) => {
             fontSize: '14px',
             position: 'relative', // positionを追加
             zIndex: 100,
+            color: /thank|Thank you/.test(text) ? 'red' : 'inherit', // テキストに'thank'または'Thank you'が含まれている場合、文字色を赤にする
           }}
         >
           {text}
